@@ -44,6 +44,7 @@ pub struct StakingEntry {
 pub enum StakingError {
     StakingNotFound,
     InsufficientFunds,
+    InvalidPrice,
     InvalidReleaseTime,
     InvalidStakingState,
     #[from(ParseError)]
@@ -139,8 +140,6 @@ impl State {
             host.state_mut().staking_entries
                 .insert(ctx.invoker(), staking_entry);
         
-            // Transfer funds to the contract
-            host.invoke_transfer(&ctx.owner(), staking_amount)?;
         Ok(())
     }
 
@@ -220,10 +219,13 @@ fn init(_ctx: &InitContext, state_builder: &mut StateBuilder) -> InitResult<Stat
     contract = "gonana_staking_contract",
     name = "stake_funds",
     parameter = "StakingParameter",
-    mutable
+    mutable,
+    payable
 )]
-fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), StakingError> {
+fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>, amount: Amount) -> Result<(), StakingError> {
     let parameter: StakingParameter = ctx.parameter_cursor().get()?;
+
+    ensure!(amount == parameter.staking_amount,  StakingError::InvalidPrice);
 
    // Check if the release time is in the future
    if parameter.release_time <= ctx.metadata().block_time() {
@@ -243,8 +245,7 @@ fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Staki
         .staking_entries
         .insert(ctx.invoker(), staking_entry);
 
-    // Transfer funds to the contract
-    host.invoke_transfer(&ctx.owner(), parameter.staking_amount)?;
+   
 
     Ok(())
 }
@@ -298,7 +299,7 @@ fn release_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Sta
 
         Ok(())
     } else {
-        // Escrow not found
+        // Staking_entry not found
         Err(StakingError::StakingNotFound)
     }
 
