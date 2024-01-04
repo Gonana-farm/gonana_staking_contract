@@ -151,7 +151,7 @@ fn release_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Sta
     let transfer_payload = Transfer{
         token_id,
         amount: stake_entry.amount,
-        to: stake_entry.staker,
+        to: Receiver::Account((stake_entry.staker)),
         from: ctx.self_address(),
         data: AdditionalData::empty()
     };
@@ -160,11 +160,10 @@ fn release_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Sta
     let mut transfers = Vec::new();
     transfers.push(transfer_payload);
     let payload = TransferEvent::from(transfers);
-
     //Check if the release time has passed
     if release_time_utc <= current_time {
         host.invoke_contract(&gona_token, &payload, entry_point, Amount::zero())
-    }
-
+    }   
+    
     Ok(())
 }
