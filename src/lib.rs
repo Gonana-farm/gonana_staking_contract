@@ -11,11 +11,6 @@ use chrono::{Local, DateTime, Utc, TimeZone};
 
 
 
-
-
-
-
-
 /// Struct to represent information about a stake.
 #[derive(Serialize, SchemaType, PartialEq, Eq, Debug)]
 pub struct StakeEntry {
@@ -23,10 +18,6 @@ pub struct StakeEntry {
      pub amount: Amount,
     pub release_time: Timestamp,
 }
-
-
-
-
 
 
 
@@ -44,10 +35,6 @@ pub enum StakingError {
     #[from(TransferError)]
     TransferError,
 }
-
-
-
-
 
 
 
@@ -100,16 +87,7 @@ const SECONDS_IN_YEAR: u64 = 31536000; // 60 seconds/minute * 60 minutes/hour * 
 
 
 
-
-
-
-
 impl State {
-
-
-
-
-
 
      fn empty(state_builder: &mut StateBuilder) -> Self {
         State {
@@ -117,21 +95,7 @@ impl State {
             next_stake_id: 1,
         }
     }
-
-
-
-
 }
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -140,13 +104,6 @@ impl State {
 fn init(_ctx: &InitContext, state_builder: &mut StateBuilder) -> InitResult<State> {
     Ok(State::empty(state_builder))
 }
-
-
-
-
-
-
-
 
 
 
@@ -175,19 +132,6 @@ fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Staki
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 //Function to release the staked funds
 #[receive(contract = "gonana_staking_contract", name = "release_funds",parameter = "ReleaseFundsParams", mutable)]
 fn release_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), StakingError> {
@@ -197,19 +141,29 @@ fn release_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Sta
     
     let current_time =  Utc::now();
 
-
     //convert release_time to DateTime<Utc>
     let release_time_utc = Utc.timestamp_millis_opt(stake_entry.release_time.timestamp_millis() as i64).unwrap();
 
     let token_id: ContractTokenId = "";
-    let token_amount: ContractTokenAmount = "";
-
-    // Create a Transfer instance
+    let gona_token = ContractAddress::new(7265,0);
     
+    // Create a Transfer instance
+    let transfer_payload = Transfer{
+        token_id,
+        amount: stake_entry.amount,
+        to: stake_entry.staker,
+        from: ctx.self_address(),
+        data: AdditionalData::empty()
+    };
+    let entry_point= OwnedEntrypointName::new_unchecked("transfer".into());
+
+    let mut transfers = Vec::new();
+    transfers.push(transfer_payload);
+    let payload = TransferEvent::from(transfers);
 
     //Check if the release time has passed
     if release_time_utc <= current_time {
-        host.invoke_contract(&parameter.contract_address, &parameter, method, amount)
+        host.invoke_contract(&gona_token, &payload, entry_point, Amount::zero())
     }
 
     Ok(())
