@@ -3,10 +3,13 @@
 
 
 
-
+use concordium_cis2::{Cis2Event, *};
 use concordium_std::*;
 use concordium_std::Amount;
 use core::fmt::Debug;
+use chrono::{Local, DateTime, Utc, TimeZone};
+
+
 
 
 
@@ -63,11 +66,27 @@ pub struct StakeParams {
 
 
 
+#[derive(Serialize, SchemaType)]
+pub struct ReleaseFundsParams {
+    pub contract_address: ContractAddress,
+    pub contract_token_id: ContractTokenId
+}
+
+
+
+
+
+
+
+
+
+
+
 /// Smart contract state
 #[derive(Serial, DeserialWithState)]
 #[concordium(state_parameter = "S")]
 pub struct State<S = StateApi> {
-    pub stake_entries: StateMap<u64, StakeEntry, S>,
+    pub stake_entries: StateMap<AccountAddress, StakeEntry, S>,
     pub next_stake_id: u64,
 }
 
@@ -117,12 +136,9 @@ impl State {
 
 
     /// Init function to initialize the staking state
-#[init(contract = "staking_contract")]
+#[init(contract = "gonana_staking_contract")]
 fn init(_ctx: &InitContext, state_builder: &mut StateBuilder) -> InitResult<State> {
-    Ok(State {
-        stake_entries: state_builder.new_map(),
-        next_stake_id: 1,
-    })
+    Ok(State::empty(state_builder))
 }
 
 
@@ -135,7 +151,7 @@ fn init(_ctx: &InitContext, state_builder: &mut StateBuilder) -> InitResult<Stat
 
 
 /// Function to handle staking funds
-#[receive(contract = "staking_contract", name = "stake_funds", parameter = "StakeParams", mutable)]
+#[receive(contract = "gonana_staking_contract", name = "stake_funds", parameter = "StakeParams", mutable)]
 fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), StakingError> {
     let parameter: StakeParams = ctx.parameter_cursor().get()?;
     
@@ -146,8 +162,7 @@ fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Staki
         release_time: parameter.release_time,
     };
 
-    let next_stake_id = host.state_mut().next_stake_id;
-    host.state_mut().stake_entries.insert(next_stake_id, stake_info);
+    host.state_mut().stake_entries.insert(parameter.staker, stake_info);
     
     // Update next_stake_id for the next stake
     host.state_mut().next_stake_id += 1;
@@ -161,3 +176,41 @@ fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Staki
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+//Function to release the staked funds
+#[receive(contract = "gonana_staking_contract", name = "release_funds",parameter = "ReleaseFundsParams", mutable)]
+fn release_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), StakingError> {
+    let parameter: ReleaseFundsParams = ctx.parameter_cursor().get()?;
+
+    let stake_entry = host.state_mut().stake_entries.get_mut(&ctx.invoker()).ok_or(StakingError::StakingNotFound)?;
+    
+    let current_time =  Utc::now();
+
+
+    //convert release_time to DateTime<Utc>
+    let release_time_utc = Utc.timestamp_millis_opt(stake_entry.release_time.timestamp_millis() as i64).unwrap();
+
+    let token_id: ContractTokenId = "";
+    let token_amount: ContractTokenAmount = "";
+
+    // Create a Transfer instance
+    
+
+    //Check if the release time has passed
+    if release_time_utc <= current_time {
+        host.invoke_contract(&parameter.contract_address, &parameter, method, amount)
+    }
+
+    Ok(())
+}
