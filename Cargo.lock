@@ -990,7 +990,6 @@ checksum = "4271d37baee1b8c7e4b708028c57d816cf9d2434acb33a549475f78c181f6253"
 name = "gonana_staking_smart_contract"
 version = "0.1.0"
 dependencies = [
- "chrono",
  "concordium-cis2",
  "concordium-smart-contract-testing",
  "concordium-std",

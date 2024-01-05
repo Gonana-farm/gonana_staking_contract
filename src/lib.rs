@@ -3,21 +3,46 @@
 
 
 
-use concordium_cis2::{Cis2Event, *};
+use concordium_cis2::*;
 use concordium_std::*;
 use concordium_std::Amount;
 use core::fmt::Debug;
-use chrono::{Local, DateTime, Utc, TimeZone};
+
+
+
+
+
+
+
+/// smallest possible token ID.
+pub type ContractTokenId = TokenIdUnit;
+pub type ContractTokenAmount = TokenAmountU64;
+
+
+
+
+/// Enum representing the possible states of a product
+#[derive(Debug, Serialize, SchemaType, PartialEq, Eq, Clone)]
+pub enum StakeEntryState {
+  Active,
+  Inactive
+}
+
+
 
 
 
 /// Struct to represent information about a stake.
-#[derive(Serialize, SchemaType, PartialEq, Eq, Debug)]
+#[derive(Serialize, SchemaType, PartialEq, Eq, Clone, Debug)]
 pub struct StakeEntry {
     pub staker: AccountAddress,
-     pub amount: Amount,
+     pub amount: TokenAmountU64,
     pub release_time: Timestamp,
+    pub state: StakeEntryState
 }
+
+
+
 
 
 
@@ -34,6 +59,13 @@ pub enum StakingError {
     ParseParams,
     #[from(TransferError)]
     TransferError,
+    ContractInvokeError,
+}
+
+
+
+impl<A> From<CallContractError<A>> for StakingError {
+    fn from(_: CallContractError<A>) -> Self { Self::ContractInvokeError }
 }
 
 
@@ -43,7 +75,7 @@ pub enum StakingError {
 #[derive(Serialize, SchemaType)]
 pub struct StakeParams {
     pub staker: AccountAddress,
-    pub amount: Amount,
+    pub amount: ContractTokenAmount,
     pub release_time: Timestamp,
 }
 
@@ -55,8 +87,7 @@ pub struct StakeParams {
 
 #[derive(Serialize, SchemaType)]
 pub struct ReleaseFundsParams {
-    pub contract_address: ContractAddress,
-    pub contract_token_id: ContractTokenId
+    pub token_id: ContractTokenId
 }
 
 
@@ -99,6 +130,10 @@ impl State {
 
 
 
+
+
+
+
     /// Init function to initialize the staking state
 #[init(contract = "gonana_staking_contract")]
 fn init(_ctx: &InitContext, state_builder: &mut StateBuilder) -> InitResult<State> {
@@ -117,6 +152,7 @@ fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Staki
         staker: parameter.staker,
         amount: parameter.amount,
         release_time: parameter.release_time,
+        state: StakeEntryState::Active
     };
 
     host.state_mut().stake_entries.insert(parameter.staker, stake_info);
@@ -137,33 +173,56 @@ fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Staki
 fn release_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), StakingError> {
     let parameter: ReleaseFundsParams = ctx.parameter_cursor().get()?;
 
-    let stake_entry = host.state_mut().stake_entries.get_mut(&ctx.invoker()).ok_or(StakingError::StakingNotFound)?;
+    let mut stake_entry = host.state_mut().stake_entries.get_mut(&ctx.invoker()).ok_or(StakingError::StakingNotFound)?;
     
-    let current_time =  Utc::now();
+    // Ensure that the product is in a valid state for confirming the escrow
+    ensure!(stake_entry.state == StakeEntryState::Active, StakingError::InvalidStakingState);
 
-    //convert release_time to DateTime<Utc>
-    let release_time_utc = Utc.timestamp_millis_opt(stake_entry.release_time.timestamp_millis() as i64).unwrap();
-
-    let token_id: ContractTokenId = "";
+    let token_id: ContractTokenId = parameter.token_id;
     let gona_token = ContractAddress::new(7265,0);
     
     // Create a Transfer instance
     let transfer_payload = Transfer{
         token_id,
         amount: stake_entry.amount,
-        to: Receiver::Account((stake_entry.staker)),
-        from: ctx.self_address(),
+        to: Receiver::Account(stake_entry.staker),
+        from: Address::Contract(ctx.self_address()),
         data: AdditionalData::empty()
     };
-    let entry_point= OwnedEntrypointName::new_unchecked("transfer".into());
+    let entry_point= EntrypointName::new_unchecked("transfer".into());
 
     let mut transfers = Vec::new();
     transfers.push(transfer_payload);
-    let payload = TransferEvent::from(transfers);
+    let payload = TransferParams::from(transfers);
+    stake_entry.state = StakeEntryState::Inactive;
+    drop(stake_entry);
     //Check if the release time has passed
-    if release_time_utc <= current_time {
-        host.invoke_contract(&gona_token, &payload, entry_point, Amount::zero())
-    }   
+   
+        host.invoke_contract(&gona_token, &payload, entry_point, Amount::zero())?;   
     
     Ok(())
+}
+
+
+
+
+
+
+
+/// Function to get stake information by ID
+#[receive(
+    contract = "gonana_staking_contract",
+    name = "get_stake_info",
+    parameter = "AccountAddress",
+    return_value = "Option<StakeEntry>"
+)]
+fn get_stake_info(ctx: &ReceiveContext, host: &Host<State>) -> ReceiveResult<Option<StakeEntry>>{
+    let param : AccountAddress= ctx.parameter_cursor().get()?;
+    
+      let stake_entry_ref = host.state().stake_entries.get(&param);
+
+      // Convert the StateRef to Option<StakeEntry>
+      let stake_entry_option = stake_entry_ref.map(|entry_ref| entry_ref.to_owned());
+  
+      Ok(stake_entry_option)
 }
