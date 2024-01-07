@@ -100,7 +100,6 @@ impl<A> From<CallContractError<A>> for StakingError {
 pub struct StakeParams {
     pub staker: AccountAddress,
     pub amount: ContractTokenAmount,
-    pub release_time: Timestamp,
 }
 
 
@@ -137,8 +136,8 @@ pub struct State<S = StateApi> {
 
 
 // Constants for the reward rate and seconds in a year
-const REWARD_RATE: u64 = 100; // 100% APY
-const SECONDS_IN_YEAR: u64 = 31536000; // 60 seconds/minute * 60 minutes/hour * 24 hours/day * 365 days/year
+const REWARD_RATE: u64 = 1; // 100% APY
+
 
 
 
@@ -185,7 +184,7 @@ fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Staki
     let stake_info = StakeEntry {
         staker: parameter.staker,
         amount: parameter.amount,
-        release_time: parameter.release_time,
+        release_time: ctx.metadata().block_time(),
         state: StakeEntryState::Active
     };
 
@@ -210,14 +209,20 @@ fn release_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Sta
     
     // Ensure that the product is in a valid state for confirming the escrow
     ensure!(stake_entry.state == StakeEntryState::Active, StakingError::InvalidStakingState);
+    let time = ctx.metadata().block_time().duration_since(stake_entry.release_time).unwrap();
 
+    let seconds = time.seconds();
     let token_id = TokenIdUnit();
     let gona_token = ContractAddress::new(7656,0);
+
+  
+    let reward_amount =  REWARD_RATE * seconds + stake_entry.amount.0 ;
+    let reward = TokenAmountU64(reward_amount);
     
     // Create a Transfer instance
     let transfer_payload = Transfer{
         token_id,
-        amount: stake_entry.amount,
+        amount: reward,
         to: Receiver::Account(stake_entry.staker),
         from: Address::Contract(ctx.self_address()),
         data: AdditionalData::empty()
@@ -268,3 +273,10 @@ fn get_stake_info(ctx: &ReceiveContext, host: &Host<State>) -> ReceiveResult<Opt
 //Module successfully deployed with reference: 'b2584adc2a4fec426cb16ee891fb0183525628412f8209acec2d32d0e0c2f2b1'.
 //Module reference b2584adc2a4fec426cb16ee891fb0183525628412f8209acec2d32d0e0c2f2b1 was successfully named 'gonana_staking_smart_contract'.
 //{"index":7644,"subindex":0}
+
+//{"index":7658,"subindex":0}
+
+
+//approve
+//call the stake_funds to initiate the staking pool
+//release the funds

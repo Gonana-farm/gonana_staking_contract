@@ -105,7 +105,7 @@ async fn main() -> Result<(), Error> {
     //     .context("Failed to initialize the contract.")?; // Example
 
     // This is how you can use a type from your smart contract.
-    use gonana_staking_smart_contract::{StakeParams, ApproveParam, SpendParam}; // Example
+    use gonana_staking_smart_contract::{StakeParams, ApproveParam}; // Example
 
 
     let amount = TokenAmountU64(500);
@@ -113,47 +113,64 @@ async fn main() -> Result<(), Error> {
     let stake_parameter: StakeParams = StakeParams {
         staker: deployer.key.address,
         amount,
-        release_time: Timestamp::from_timestamp_millis(MAX)
     }; // Example
     let token_id = TokenIdUnit();
 
-    let stake_bytes = contracts_common::to_bytes(&stake_parameter); 
+   
 
     // Create a successful transaction.
-    let transfer_payload = Transfer{
-        token_id,
-        amount,
-        to: Receiver::Contract(
-            ContractAddress::new(7644, 0),
-            OwnedEntrypointName::new_unchecked("stake_funds"
-            .to_string()
-        )),
-        from: Address::Account(deployer.key.address),
-        data: AdditionalData::from(stake_bytes)
-    };
+    // let transfer_payload = Transfer{
+    //     token_id,
+    //     amount,
+    //     to: Receiver::Contract(
+    //         ContractAddress::new(765, 0),
+    //         OwnedEntrypointName::new_unchecked("stake_funds"
+    //         .to_string()
+    //     )),
+    //     from: Address::Account(deployer.key.address),
+    //     data: AdditionalData::from(stake_bytes)
+    // };
 
-    let mut transfers = Vec::new();
-    transfers.push(transfer_payload);
-    let payload = TransferParams::from(transfers);
+    // let mut transfers = Vec::new();
+    // transfers.push(transfer_payload);
+    // let payload = TransferParams::from(transfers);
 
   //7656
    
-    let payload = ApproveParam {
-        amount,
-        spender: Address::Contract(ContractAddress::new(7644, 0)),
-        token_id
-    };
-    let bytes = contracts_common::to_bytes(&payload); // Example
+  
+
+    // let payload = ApproveParam {
+    //     amount,
+    //     spender: Address::Contract(ContractAddress::new(7658, 0)),
+    //     token_id
+    // };
+    // let bytes = contracts_common::to_bytes(&payload); // Example
+
+
+    // let update_payload = transactions::UpdateContractPayload {
+    //     amount: Amount::from_ccd(0),
+    //     address: ContractAddress::new(7656,0),
+    //     receive_name: OwnedReceiveName::new_unchecked("gona_token.approve".to_string()),
+    //     message: bytes.try_into()?,
+    // }; // Example
+
+    //let stake_bytes = contracts_common::to_bytes(&stake_parameter); 
+
+
+    // let update_payload = transactions::UpdateContractPayload {
+    //     amount: Amount::from_ccd(0),
+    //     address: ContractAddress::new(7658,0),
+    //     receive_name: OwnedReceiveName::new_unchecked("gonana_staking_smart_contract.stake_funds".to_string()),
+    //     message: stake_bytes.try_into()?,
+    // }; // Example
 
 
     let update_payload = transactions::UpdateContractPayload {
         amount: Amount::from_ccd(0),
-        address: ContractAddress::new(7643,0),
-        receive_name: OwnedReceiveName::new_unchecked("gona_token.approve".to_string()),
-        message: bytes.try_into()?,
+        address: ContractAddress::new(7658,0),
+        receive_name: OwnedReceiveName::new_unchecked("gonana_staking_smart_contract.release_funds".to_string()),
+        message: OwnedParameter::empty(),
     }; // Example
-
-
 
     // The transaction costs on Concordium have two components, one is based on the size of the
     // transaction and the number of signatures, and then there is a
