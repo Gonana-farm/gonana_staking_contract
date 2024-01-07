@@ -19,6 +19,9 @@ pub struct  ApproveParam {
 
 
 
+
+
+
 /// smallest possible token ID.
 pub type ContractTokenId = TokenIdUnit;
 pub type ContractTokenAmount = TokenAmountU64;
@@ -49,6 +52,22 @@ pub struct StakeEntry {
 
 
 
+#[derive(Serialize, PartialEq, Eq, Clone, Debug)]
+pub struct SpendParam {
+   amount: TokenAmountU64,
+   owner: Address,
+   token_id: TokenIdUnit,
+} 
+
+
+
+impl SpendParam {
+
+     fn new(amount: TokenAmountU64, owner: Address, token_id: TokenIdUnit) -> Self {
+        SpendParam { amount, owner, token_id }
+    }
+
+}
 
 
 
@@ -151,6 +170,16 @@ fn init(_ctx: &InitContext, state_builder: &mut StateBuilder) -> InitResult<Stat
 #[receive(contract = "gonana_staking_smart_contract", name = "stake_funds", parameter = "StakeParams", mutable)]
 fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), StakingError> {
     let parameter: StakeParams = ctx.parameter_cursor().get()?;
+
+    let amount = parameter.amount;
+    let owner = ctx.invoker();
+    let token_id = TokenIdUnit();
+    let gona_token = ContractAddress::new(7643,0);
+    let entry_point= EntrypointName::new_unchecked("transfer_from".into());
+
+    let spend_param = SpendParam::new(amount, Address::Account(owner), token_id);
+
+    host.invoke_contract(&gona_token, &spend_param, entry_point, Amount::zero())?;   
     
     // Store information about the stake in the state
     let stake_info = StakeEntry {
