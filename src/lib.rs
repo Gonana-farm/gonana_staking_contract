@@ -54,9 +54,9 @@ pub struct StakeEntry {
 
 #[derive(Serialize, PartialEq, Eq, Clone, Debug)]
 pub struct SpendParam {
-   amount: TokenAmountU64,
-   owner: Address,
-   token_id: TokenIdUnit,
+  pub amount: TokenAmountU64,
+  pub owner: Address,
+  pub token_id: TokenIdUnit,
 } 
 
 
@@ -172,12 +172,12 @@ fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Staki
     let parameter: StakeParams = ctx.parameter_cursor().get()?;
 
     let amount = parameter.amount;
-    let owner = ctx.invoker();
+    let owner = ctx.sender();
     let token_id = TokenIdUnit();
-    let gona_token = ContractAddress::new(7643,0);
+    let gona_token = ContractAddress::new(7656,0);
     let entry_point= EntrypointName::new_unchecked("transfer_from".into());
 
-    let spend_param = SpendParam::new(amount, Address::Account(owner), token_id);
+    let spend_param = SpendParam::new(amount, owner, token_id);
 
     host.invoke_contract(&gona_token, &spend_param, entry_point, Amount::zero())?;   
     
@@ -212,7 +212,7 @@ fn release_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Sta
     ensure!(stake_entry.state == StakeEntryState::Active, StakingError::InvalidStakingState);
 
     let token_id = TokenIdUnit();
-    let gona_token = ContractAddress::new(7643,0);
+    let gona_token = ContractAddress::new(7656,0);
     
     // Create a Transfer instance
     let transfer_payload = Transfer{

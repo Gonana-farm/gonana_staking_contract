@@ -105,7 +105,7 @@ async fn main() -> Result<(), Error> {
     //     .context("Failed to initialize the contract.")?; // Example
 
     // This is how you can use a type from your smart contract.
-    use gonana_staking_smart_contract::{StakeParams, ApproveParam}; // Example
+    use gonana_staking_smart_contract::{StakeParams, ApproveParam, SpendParam}; // Example
 
 
     let amount = TokenAmountU64(500);
@@ -136,7 +136,7 @@ async fn main() -> Result<(), Error> {
     transfers.push(transfer_payload);
     let payload = TransferParams::from(transfers);
 
-  
+  //7656
    
     let payload = ApproveParam {
         amount,
