@@ -4,21 +4,23 @@ use clap::Parser;
 use concordium_rust_sdk::{
     common::types::Amount,
     smart_contracts::{
-        common::{self as contracts_common},
+        common::{self as contracts_common, OwnedEntrypointName, Timestamp},
         types::{OwnedContractName, OwnedParameter, OwnedReceiveName},
     },
     types::{
         smart_contracts::{ModuleReference, WasmModule},
         transactions,
-        transactions::{send::GivenEnergy, InitContractPayload},
+        transactions::{send::GivenEnergy, InitContractPayload}, ContractAddress, Address,
     },
     v2,
 };
 use deployer::{DeployResult, Deployer, InitResult};
 use std::{
     io::Cursor,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, u64::MAX,
 };
+use concordium_cis2::*;
+use concordium_rust_sdk::smart_contracts::common as concordium_std; 
 
 /// Reads the wasm module from a given file path.
 fn get_wasm_module(file: &Path) -> Result<WasmModule, Error> {
@@ -65,58 +67,93 @@ async fn main() -> Result<(), Error> {
 
     let mut deployer = Deployer::new(concordium_client, &app.key_file)?;
 
-    let mut modules_deployed: Vec<ModuleReference> = Vec::new();
+    // let mut modules_deployed: Vec<ModuleReference> = Vec::new();
 
-    for contract in app.module {
-        let wasm_module = get_wasm_module(contract.as_path())?;
+    // for contract in app.module {
+    //     let wasm_module = get_wasm_module(contract.as_path())?;
 
-        let deploy_result = deployer
-            .deploy_wasm_module(wasm_module, None)
-            .await
-            .context("Failed to deploy a module.")?;
+    //     let deploy_result = deployer
+    //         .deploy_wasm_module(wasm_module, None)
+    //         .await
+    //         .context("Failed to deploy a module.")?;
 
-        match deploy_result {
-            DeployResult::ModuleDeployed(module_deploy_result) => {
-                modules_deployed.push(module_deploy_result.module_reference)
-            }
-            DeployResult::ModuleExists(module_reference) => modules_deployed.push(module_reference),
-        }
-    }
+    //     match deploy_result {
+    //         DeployResult::ModuleDeployed(module_deploy_result) => {
+    //             modules_deployed.push(module_deploy_result.module_reference)
+    //         }
+    //         DeployResult::ModuleExists(module_reference) => modules_deployed.push(module_reference),
+    //     }
+    // }
 
-    // Write your own deployment/initialization script below. An example is given
-    // here.
+    // // Write your own deployment/initialization script below. An example is given
+    // // here.
 
-    let param: OwnedParameter = OwnedParameter::empty(); // Example
+    // let param: OwnedParameter = OwnedParameter::empty(); // Example
 
-    let init_method_name: &str = "init_gonana_staking_smart_contract"; // Example
+    // let init_method_name: &str = "init_gonana_staking_smart_contract"; // Example
 
-    let payload = InitContractPayload {
-        init_name: OwnedContractName::new(init_method_name.into())?,
-        amount: Amount::from_micro_ccd(0),
-        mod_ref: modules_deployed[0],
-        param,
-    }; // Example
+    // let payload = InitContractPayload {
+    //     init_name: OwnedContractName::new(init_method_name.into())?,
+    //     amount: Amount::from_micro_ccd(0),
+    //     mod_ref: modules_deployed[0],
+    //     param,
+    // }; // Example
 
-    let init_result: InitResult = deployer
-        .init_contract(payload, None, None)
-        .await
-        .context("Failed to initialize the contract.")?; // Example
+    // let init_result: InitResult = deployer
+    //     .init_contract(payload, None, None)
+    //     .await
+    //     .context("Failed to initialize the contract.")?; // Example
 
     // This is how you can use a type from your smart contract.
-    use gonana_staking_smart_contract::MyInputType; // Example
+    use gonana_staking_smart_contract::{StakeParams, ApproveParam}; // Example
 
-    let input_parameter: MyInputType = false; // Example
+
+    let amount = TokenAmountU64(500);
+
+    let stake_parameter: StakeParams = StakeParams {
+        staker: deployer.key.address,
+        amount,
+        release_time: Timestamp::from_timestamp_millis(MAX)
+    }; // Example
+    let token_id = TokenIdUnit();
+
+    let stake_bytes = contracts_common::to_bytes(&stake_parameter); 
 
     // Create a successful transaction.
+    let transfer_payload = Transfer{
+        token_id,
+        amount,
+        to: Receiver::Contract(
+            ContractAddress::new(7644, 0),
+            OwnedEntrypointName::new_unchecked("stake_funds"
+            .to_string()
+        )),
+        from: Address::Account(deployer.key.address),
+        data: AdditionalData::from(stake_bytes)
+    };
 
-    let bytes = contracts_common::to_bytes(&input_parameter); // Example
+    let mut transfers = Vec::new();
+    transfers.push(transfer_payload);
+    let payload = TransferParams::from(transfers);
+
+  
+   
+    let payload = ApproveParam {
+        amount,
+        spender: Address::Contract(ContractAddress::new(7644, 0)),
+        token_id
+    };
+    let bytes = contracts_common::to_bytes(&payload); // Example
+
 
     let update_payload = transactions::UpdateContractPayload {
         amount: Amount::from_ccd(0),
-        address: init_result.contract_address,
-        receive_name: OwnedReceiveName::new_unchecked("gonana_staking_smart_contract.receive".to_string()),
+        address: ContractAddress::new(7643,0),
+        receive_name: OwnedReceiveName::new_unchecked("gona_token.approve".to_string()),
         message: bytes.try_into()?,
     }; // Example
+
+
 
     // The transaction costs on Concordium have two components, one is based on the size of the
     // transaction and the number of signatures, and then there is a

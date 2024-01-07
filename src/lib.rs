@@ -9,7 +9,12 @@ use concordium_std::Amount;
 use core::fmt::Debug;
 
 
-
+#[derive(Serialize, PartialEq, Eq, Clone, Debug)]
+pub struct  ApproveParam {
+    pub amount: TokenAmountU64,
+    pub spender: Address,
+    pub token_id: TokenIdUnit,
+ } 
 
 
 
@@ -18,7 +23,7 @@ use core::fmt::Debug;
 pub type ContractTokenId = TokenIdUnit;
 pub type ContractTokenAmount = TokenAmountU64;
 
-
+pub const TOKEN_ID_GONA:ContractTokenId = TokenIdUnit();
 
 
 /// Enum representing the possible states of a product
@@ -135,7 +140,7 @@ impl State {
 
 
     /// Init function to initialize the staking state
-#[init(contract = "gonana_staking_contract")]
+#[init(contract = "gonana_staking_smart_contract")]
 fn init(_ctx: &InitContext, state_builder: &mut StateBuilder) -> InitResult<State> {
     Ok(State::empty(state_builder))
 }
@@ -143,7 +148,7 @@ fn init(_ctx: &InitContext, state_builder: &mut StateBuilder) -> InitResult<Stat
 
 
 /// Function to handle staking funds
-#[receive(contract = "gonana_staking_contract", name = "stake_funds", parameter = "StakeParams", mutable)]
+#[receive(contract = "gonana_staking_smart_contract", name = "stake_funds", parameter = "StakeParams", mutable)]
 fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), StakingError> {
     let parameter: StakeParams = ctx.parameter_cursor().get()?;
     
@@ -169,17 +174,16 @@ fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Staki
 
 
 //Function to release the staked funds
-#[receive(contract = "gonana_staking_contract", name = "release_funds",parameter = "ReleaseFundsParams", mutable)]
+#[receive(contract = "gonana_staking_smart_contract", name = "release_funds", mutable)]
 fn release_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), StakingError> {
-    let parameter: ReleaseFundsParams = ctx.parameter_cursor().get()?;
 
     let mut stake_entry = host.state_mut().stake_entries.get_mut(&ctx.invoker()).ok_or(StakingError::StakingNotFound)?;
     
     // Ensure that the product is in a valid state for confirming the escrow
     ensure!(stake_entry.state == StakeEntryState::Active, StakingError::InvalidStakingState);
 
-    let token_id: ContractTokenId = parameter.token_id;
-    let gona_token = ContractAddress::new(7265,0);
+    let token_id = TokenIdUnit();
+    let gona_token = ContractAddress::new(7643,0);
     
     // Create a Transfer instance
     let transfer_payload = Transfer{
@@ -211,7 +215,7 @@ fn release_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Sta
 
 /// Function to get stake information by ID
 #[receive(
-    contract = "gonana_staking_contract",
+    contract = "gonana_staking_smart_contract",
     name = "get_stake_info",
     parameter = "AccountAddress",
     return_value = "Option<StakeEntry>"
@@ -226,3 +230,12 @@ fn get_stake_info(ctx: &ReceiveContext, host: &Host<State>) -> ReceiveResult<Opt
   
       Ok(stake_entry_option)
 }
+
+
+
+
+//Module successfully deployed with reference: '2eadfae54e3f063c5bda0a27129390c0dd8ebdb2f3196edb0b0d3743f9bdb5ee'.
+//Module reference 2eadfae54e3f063c5bda0a27129390c0dd8ebdb2f3196edb0b0d3743f9bdb5ee was successfully named 'gonana_staking__module'.
+//Module successfully deployed with reference: 'b2584adc2a4fec426cb16ee891fb0183525628412f8209acec2d32d0e0c2f2b1'.
+//Module reference b2584adc2a4fec426cb16ee891fb0183525628412f8209acec2d32d0e0c2f2b1 was successfully named 'gonana_staking_smart_contract'.
+//{"index":7644,"subindex":0}
