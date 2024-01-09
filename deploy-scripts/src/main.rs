@@ -108,7 +108,7 @@ async fn main() -> Result<(), Error> {
     use gonana_staking_smart_contract::{StakeParams, ApproveParam}; // Example
 
 
-    let amount = TokenAmountU64(500);
+    let amount = TokenAmountU64(10000);
 
     let stake_parameter: StakeParams = StakeParams {
         staker: deployer.key.address,
@@ -138,10 +138,11 @@ async fn main() -> Result<(), Error> {
   //7656
    
   
+        // approve
 
     // let payload = ApproveParam {
     //     amount,
-    //     spender: Address::Contract(ContractAddress::new(7658, 0)),
+    //     spender: Address::Contract(ContractAddress::new(7659, 0)),
     //     token_id
     // };
     // let bytes = contracts_common::to_bytes(&payload); // Example
@@ -154,23 +155,33 @@ async fn main() -> Result<(), Error> {
     //     message: bytes.try_into()?,
     // }; // Example
 
-    //let stake_bytes = contracts_common::to_bytes(&stake_parameter); 
+
+//stake_funds
+
+    // let stake_bytes = contracts_common::to_bytes(&stake_parameter); 
 
 
     // let update_payload = transactions::UpdateContractPayload {
     //     amount: Amount::from_ccd(0),
-    //     address: ContractAddress::new(7658,0),
+    //     address: ContractAddress::new(7659,0),
     //     receive_name: OwnedReceiveName::new_unchecked("gonana_staking_smart_contract.stake_funds".to_string()),
     //     message: stake_bytes.try_into()?,
     // }; // Example
 
 
+  //  release_funds
     let update_payload = transactions::UpdateContractPayload {
         amount: Amount::from_ccd(0),
-        address: ContractAddress::new(7658,0),
+        address: ContractAddress::new(7659,0),
         receive_name: OwnedReceiveName::new_unchecked("gonana_staking_smart_contract.release_funds".to_string()),
         message: OwnedParameter::empty(),
     }; // Example
+
+
+
+
+   
+
 
     // The transaction costs on Concordium have two components, one is based on the size of the
     // transaction and the number of signatures, and then there is a
@@ -196,3 +207,22 @@ async fn main() -> Result<(), Error> {
 
     Ok(())
 }
+
+
+
+
+
+
+
+ // //view stake_info
+
+    // let param = deployer.key.address;
+
+    // let bytes = contracts_common::to_bytes(&param); 
+
+    //     let update_payload = transactions::UpdateContractPayload {
+    //     amount: Amount::from_ccd(0),
+    //     address: ContractAddress::new(7659,0),
+    //     receive_name: OwnedReceiveName::new_unchecked("gonana_staking_smart_contract.get_stake_info".to_string()),
+    //     message: bytes.try_into()?,
+    // };

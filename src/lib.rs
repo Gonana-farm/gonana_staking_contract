@@ -175,25 +175,34 @@ fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Staki
     let token_id = TokenIdUnit();
     let gona_token = ContractAddress::new(7656,0);
     let entry_point= EntrypointName::new_unchecked("transfer_from".into());
-
     let spend_param = SpendParam::new(amount, owner, token_id);
 
-    host.invoke_contract(&gona_token, &spend_param, entry_point, Amount::zero())?;   
     
-    // Store information about the stake in the state
-    let stake_info = StakeEntry {
-        staker: parameter.staker,
-        amount: parameter.amount,
-        release_time: ctx.metadata().block_time(),
-        state: StakeEntryState::Active
-    };
 
-    host.state_mut().stake_entries.insert(parameter.staker, stake_info);
+    // Check if an AccountAddress has staked before 
+    if let Some(mut stake_entry) = host.state_mut().stake_entries.remove_and_get(&ctx.invoker()){
+             // Ensure that the stake-entry is in an Active state 
+             ensure!(stake_entry.state == StakeEntryState::Active, StakingError::InvalidStakingState);  
+             host.invoke_contract(&gona_token, &spend_param, entry_point, Amount::zero())?; 
+             stake_entry.amount += amount; 
+             stake_entry.release_time = ctx.metadata().block_time()
+    } else {
+        // If an AccountAddress has not staked before go ahead to stake_funds
+            host.invoke_contract(&gona_token, &spend_param, entry_point, Amount::zero())?;   
     
-    // Update next_stake_id for the next stake
-    host.state_mut().next_stake_id += 1;
+        // Store information about the stake in the state
+        let stake_info = StakeEntry {
+            staker: parameter.staker,
+            amount: parameter.amount,
+            release_time: ctx.metadata().block_time(),
+            state: StakeEntryState::Active
+        };
 
-    // ... (perform other staking logic as needed)
+        host.state_mut().stake_entries.insert(parameter.staker, stake_info);
+    
+        // Update next_stake_id for the next stake
+        host.state_mut().next_stake_id += 1;
+    }
 
     Ok(())
 }
@@ -207,7 +216,7 @@ fn release_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Sta
 
     let mut stake_entry = host.state_mut().stake_entries.get_mut(&ctx.invoker()).ok_or(StakingError::StakingNotFound)?;
     
-    // Ensure that the product is in a valid state for confirming the escrow
+    // Ensure that the stake-entry is in a valid state for releasing the funds
     ensure!(stake_entry.state == StakeEntryState::Active, StakingError::InvalidStakingState);
     let time = ctx.metadata().block_time().duration_since(stake_entry.release_time).unwrap();
 
@@ -275,6 +284,7 @@ fn get_stake_info(ctx: &ReceiveContext, host: &Host<State>) -> ReceiveResult<Opt
 //{"index":7644,"subindex":0}
 
 //{"index":7658,"subindex":0}
+// {"index":7659,"subindex":0}
 
 
 //approve
