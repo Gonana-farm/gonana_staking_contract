@@ -63,7 +63,7 @@ struct App {
 async fn main() -> Result<(), Error> {
     let app: App = App::parse();
 
-    let concordium_client = v2::Client::new(app.url).await?;
+    let concordium_client = v2::Client::new(app.url.clone()).await?;
 
     let mut deployer = Deployer::new(concordium_client, &app.key_file)?;
 
@@ -108,7 +108,7 @@ async fn main() -> Result<(), Error> {
     use gonana_staking_smart_contract::{StakeParams, ApproveParam}; // Example
 
 
-    let amount = TokenAmountU64(10000);
+    let amount = TokenAmountU64(1000);
 
     let stake_parameter: StakeParams = StakeParams {
         staker: deployer.key.address,
@@ -142,7 +142,7 @@ async fn main() -> Result<(), Error> {
 
     // let payload = ApproveParam {
     //     amount,
-    //     spender: Address::Contract(ContractAddress::new(7659, 0)),
+    //     spender: Address::Contract(ContractAddress::new(7669, 0)),
     //     token_id
     // };
     // let bytes = contracts_common::to_bytes(&payload); // Example
@@ -163,24 +163,34 @@ async fn main() -> Result<(), Error> {
 
     // let update_payload = transactions::UpdateContractPayload {
     //     amount: Amount::from_ccd(0),
-    //     address: ContractAddress::new(7659,0),
+    //     address: ContractAddress::new(7669,0),
     //     receive_name: OwnedReceiveName::new_unchecked("gonana_staking_smart_contract.stake_funds".to_string()),
     //     message: stake_bytes.try_into()?,
     // }; // Example
 
 
-  //  release_funds
+   //release_funds
     let update_payload = transactions::UpdateContractPayload {
         amount: Amount::from_ccd(0),
-        address: ContractAddress::new(7659,0),
+        address: ContractAddress::new(7669,0),
         receive_name: OwnedReceiveName::new_unchecked("gonana_staking_smart_contract.release_funds".to_string()),
         message: OwnedParameter::empty(),
     }; // Example
 
 
+    // let mut client = v2::Client::new(app.url).await?;
+    // let parameter = deployer.key.address;
+    // //let bytes = contracts_common::to_bytes(&param);
 
+    //    let bi = concordium_rust_sdk::v2::BlockIdentifier::LastFinal; 
+    // let address =  ContractAddress::new(7669, 0);//init_result.contract_address, 
+    // let receive_name = OwnedReceiveName::new_unchecked("gonana_staking_smart_contract.get_stake_info".to_string());
 
-   
+    // //let context = concordium_rust_sdk::types::smart_contracts::ContractContext::new(address,receive_name);
+    // let context = concordium_rust_sdk::contract_client::ContractClient::invoke_raw( receive_name, Amount::zero(), invoker, parameter, bi);
+    // let res = client.invoke_instance(bi, &context).await?.response;
+    // println!("{:?}",res);
+
 
 
     // The transaction costs on Concordium have two components, one is based on the size of the
@@ -191,8 +201,8 @@ async fn main() -> Result<(), Error> {
         .await
         .context("Failed to estimate the energy.")?; // Example
 
-    // We add 100 energy to be safe.
-    energy.energy += 100; // Example
+    // // We add 100 energy to be safe.
+    // energy.energy += 100; // Example
 
     // `GivenEnergy::Add(energy)` is the recommended helper function to handle the transaction cost automatically for the first component
     // (based on the size of the transaction and the number of signatures).

@@ -185,7 +185,9 @@ fn stake_funds(ctx: &ReceiveContext, host: &mut Host<State>) -> Result<(), Staki
              ensure!(stake_entry.state == StakeEntryState::Active, StakingError::InvalidStakingState);  
              host.invoke_contract(&gona_token, &spend_param, entry_point, Amount::zero())?; 
              stake_entry.amount += amount; 
-             stake_entry.release_time = ctx.metadata().block_time()
+             stake_entry.release_time = ctx.metadata().block_time();
+             host.state_mut().stake_entries.insert(stake_entry.staker, stake_entry.clone());
+             stake_entry.delete();
     } else {
         // If an AccountAddress has not staked before go ahead to stake_funds
             host.invoke_contract(&gona_token, &spend_param, entry_point, Amount::zero())?;   
@@ -285,6 +287,7 @@ fn get_stake_info(ctx: &ReceiveContext, host: &Host<State>) -> ReceiveResult<Opt
 
 //{"index":7658,"subindex":0}
 // {"index":7659,"subindex":0}
+//{"index":7669,"subindex":0}
 
 
 //approve
