@@ -119,6 +119,16 @@ pub struct ReleaseFundsParams {
 
 
 
+#[derive(Serialize, SchemaType)]
+struct UpgradeParams {
+    /// The new module reference.
+    module:  ModuleReference,
+    /// Optional entrypoint to call in the new module after upgrade.
+    migrate: Option<(OwnedEntrypointName, OwnedParameter)>,
+}
+
+
+
 
 
 
@@ -277,6 +287,42 @@ fn get_stake_info(ctx: &ReceiveContext, host: &Host<State>) -> ReceiveResult<Opt
 }
 
 
+
+
+
+
+
+
+
+
+//function to upgrade contract
+#[receive(
+    contract = "my_contract",
+    name = "upgrade",
+    parameter = "UpgradeParams",
+    low_level
+)]
+fn contract_upgrade(
+    ctx: &ReceiveContext,
+    host: &mut LowLevelHost,
+) -> ReceiveResult<()> {
+    // Check that only the owner is authorized to upgrade the smart contract.
+    ensure!(ctx.sender().matches_account(&ctx.owner()));
+    // Parse the parameter.
+    let params: UpgradeParams = ctx.parameter_cursor().get()?;
+    // Trigger the upgrade.
+    host.upgrade(params.module)?;
+    // Call the migration function if provided.
+    if let Some((func, parameters)) = params.migrate {
+        host.invoke_contract_raw(
+            &ctx.self_address(),
+            parameters.as_parameter(),
+            func.as_entrypoint_name(),
+            Amount::zero(),
+        )?;
+    }
+    Ok(())
+}
 
 
 //Module successfully deployed with reference: '2eadfae54e3f063c5bda0a27129390c0dd8ebdb2f3196edb0b0d3743f9bdb5ee'.
